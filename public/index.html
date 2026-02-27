@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Letterboxd Compare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;1,9..40,400&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #e8e6e3;
+      --muted: #8a8681;
+      --accent: #e5b106;
+      --accent-dim: #b8920a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem;
+    }
+    h1 {
+      font-family: "Fraunces", serif;
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+    .uploads {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .upload-box {
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+      background: var(--surface);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-box:hover { border-color: var(--muted); }
+    .upload-box.has-file { border-color: var(--accent-dim); background: rgba(229, 177, 6, 0.06); }
+    .upload-box label {
+      display: block;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .upload-box .name {
+      margin-top: 0.5rem;
+      color: var(--text);
+      font-size: 0.85rem;
+      word-break: break-all;
+    }
+    .upload-box input { display: none; }
+    .btn {
+      width: 100%;
+      padding: 0.9rem 1.25rem;
+      font: inherit;
+      font-weight: 600;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    .btn:hover { background: var(--accent-dim); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .results {
+      margin-top: 2.5rem;
+      display: none;
+    }
+    .results.visible { display: block; }
+    .results h2 {
+      font-family: "Fraunces", serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 0.75rem;
+      color: var(--muted);
+    }
+    .results .names {
+      margin-bottom: 1.5rem;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .section {
+      margin-bottom: 2rem;
+    }
+    .section h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin: 0 0 0.75rem;
+    }
+    .film-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .film-list li {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .film-list li:last-child { border-bottom: none; }
+    .film-list .year { color: var(--muted); font-size: 0.9rem; }
+    .film-list a { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
+    .film-list a:hover { text-decoration: underline; }
+    .counts {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .error {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(200, 80, 80, 0.15);
+      border-radius: 8px;
+      color: #e8a0a0;
+      font-size: 0.9rem;
+    }
+    .spinner { display: none; }
+    .spinner.visible { display: inline-block; width: 1rem; height: 1rem; margin-right: 0.5rem; vertical-align: -0.2em; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Letterboxd Compare</h1>
+    <p class="sub">Upload two Letterboxd export zip files to see which films you’ve both seen or both want to see.</p>
+
+    <form id="form">
+      <div class="uploads">
+        <div class="upload-box" id="box1">
+          <label for="export1">Person 1 export</label>
+          <input type="file" id="export1" name="export1" accept=".zip" required>
+          <div class="name" id="name1"></div>
+        </div>
+        <div class="upload-box" id="box2">
+          <label for="export2">Person 2 export</label>
+          <input type="file" id="export2" name="export2" accept=".zip" required>
+          <div class="name" id="name2"></div>
+        </div>
+      </div>
+      <button type="submit" class="btn" id="btn"><span class="spinner" id="spinner"></span>Analyze</button>
+    </form>
+
+    <div class="error" id="error" style="display: none;"></div>
+    <div class="results" id="results">
+      <div class="names" id="names"></div>
+      <div class="section">
+        <h3>Both have seen</h3>
+        <ul class="film-list" id="watched"></ul>
+        <div class="counts" id="watchedCount"></div>
+      </div>
+      <div class="section">
+        <h3>Both want to see</h3>
+        <ul class="film-list" id="watchlist"></ul>
+        <div class="counts" id="watchlistCount"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const export1 = document.getElementById("export1");
+    const export2 = document.getElementById("export2");
+    const box1 = document.getElementById("box1");
+    const box2 = document.getElementById("box2");
+    const name1 = document.getElementById("name1");
+    const name2 = document.getElementById("name2");
+    const form = document.getElementById("form");
+    const btn = document.getElementById("btn");
+    const spinner = document.getElementById("spinner");
+    const error = document.getElementById("error");
+    const results = document.getElementById("results");
+    const namesEl = document.getElementById("names");
+    const watchedEl = document.getElementById("watched");
+    const watchlistEl = document.getElementById("watchlist");
+    const watchedCount = document.getElementById("watchedCount");
+    const watchlistCount = document.getElementById("watchlistCount");
+
+    export1.onchange = () => { name1.textContent = export1.files[0]?.name || ""; box1.classList.toggle("has-file", !!export1.files[0]); };
+    export2.onchange = () => { name2.textContent = export2.files[0]?.name || ""; box2.classList.toggle("has-file", !!export2.files[0]); };
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      error.style.display = "none";
+      results.classList.remove("visible");
+      btn.disabled = true;
+      spinner.classList.add("visible");
+
+      const fd = new FormData();
+      fd.append("export1", export1.files[0]);
+      fd.append("export2", export2.files[0]);
+
+      try {
+        const r = await fetch("/analyze", { method: "POST", body: fd });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          error.textContent = data.error || "Analysis failed.";
+          error.style.display = "block";
+          return;
+        }
+        namesEl.textContent = data.nameA + "  ·  " + data.nameB;
+        watchedEl.innerHTML = data.watchedBoth.map(f => `
+          <li><span class="title">${escapeHtml(f.name)}</span> <span class="year">(${f.year})</span> <a href="${escapeHtml(f.uri)}" target="_blank" rel="noopener">Letterboxd</a></li>
+        `).join("") || "<li>None</li>";
+        watchlistEl.innerHTML = data.watchlistBoth.map(f => `
+          <li><span class="title">${escapeHtml(f.name)}</span> <span class="year">(${f.year})</span> <a href="${escapeHtml(f.uri)}" target="_blank" rel="noopener">Letterboxd</a></li>
+        `).join("") || "<li>None</li>";
+        watchedCount.textContent = "Count: " + data.watchedBoth.length;
+        watchlistCount.textContent = "Count: " + data.watchlistBoth.length;
+        results.classList.add("visible");
+      } catch (err) {
+        error.textContent = err.message || "Network error.";
+        error.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        spinner.classList.remove("visible");
+      }
+    };
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
